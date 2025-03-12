@@ -1,0 +1,20 @@
+{
+  "name": "zylentrix-assignment",
+  "version": "1.0.0",
+  "description": "user management",
+  "main": "server.js",
+  "type":"commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "author": "avnish",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.12.1",
+    "nodemon": "^3.1.9",
+    "validator": "^13.12.0"
+  }
+}
