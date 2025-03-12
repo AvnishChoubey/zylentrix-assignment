@@ -7,10 +7,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 require('dotenv').config();
 
-const PORT = process.env.PORT;
-const DB_USER = process.env.DB_USER;
-const DB_PW = process.env.DB_PW;
-const DB_NAME = process.env.DB_NAME;
+// const PORT = process.env.PORT;
+// const DB_USER = process.env.DB_USER;
+// const DB_PW = process.env.DB_PW;
+// const DB_NAME = process.env.DB_NAME;
 
 const mongoURI = `mongodb+srv://${DB_USER}:${DB_PW}@cluster0.0gxs4.mongodb.net/${DB_NAME}?retryWrites=true&w=majority`;
 
@@ -21,8 +21,6 @@ mongoose.connect(mongoURI)
 
 app.post("/users/new", async(req, res) => {
     try {
-        // req.body = {"email": "brucewayne@gmail.com", "name": "Bruce Wayne" : "age": "40"}
-        // req.body = {"email": "selinakyle@gmail.com", "name": "Selina Kyle" : "age": "28"}
         const user = await User.findOne({email: req.body.email});
         if(user) {
             res.status(400).json({message: "User already exists"});
@@ -54,8 +52,6 @@ app.get("/users/all", async(req, res) => {
 
 app.get("/users/:email", async (req, res) => {
     try {
-        // email : "brucewayne@gmail.com"
-        // email : "clown@gmail.com"
         const user = await User.findOne({email: req.params.email}); // finds the first document with the given attribute(s) match
         if(user) {
             res.status(200).json({message: "Match Found", ...user._doc});
@@ -68,8 +64,6 @@ app.get("/users/:email", async (req, res) => {
 });
 
 app.put("/users/:email", async (req, res) => {
-    // req.body = {"email": "brucewayne@gmail.com", "name": "Bruce Wayne" : "age": "44"}
-    // req.body = {"email": "selinakyle@gmail.com", "name": "Selina Kyle" : "age": "32"}
     try {
         const user = await User.findOneAndUpdate({email: req.params.email}, req.body, {new: true}); // finds the first document with the given attribute(s) match and updates
         res.status(200).json({message: "User Updated", ...user._doc});
@@ -79,8 +73,6 @@ app.put("/users/:email", async (req, res) => {
 });
 
 app.delete("/users/:email", async (req, res) => {
-    // email : "selinakyle@gmail.com"
-    // email : "clown@gmail.com"
     try {
         const user = await User.findOneAndDelete({email: req.params.email});    // finds the first document with the given attributes(s) match and deletes the matching document
         res.status(200).json({message: "User Deleted"});
