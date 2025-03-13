@@ -19,24 +19,32 @@ mongoose.connect(mongoURI)
 .then(() => console.log('Connected to MongoDB!'))
 .catch(error => console.error('MongoDB connection error:', error));
 
+
+// create a new user
 app.post("/users/new", async(req, res) => {
     try {
+        // check if any user with given already exists
         const user = await User.findOne({email: req.body.email});
+        // If the user was not found
         if(user) {
             res.status(400).json({message: "User already exists"});
         }
+        // If the user was not found and created successfully
         const newUser = new User(req.body);
         await newUser.save();
         res.status(201).json({message: "User created", ...newUser._doc});
     } catch(error) {
+        // If the email, name or age throw validation errors
         if(error.name === "ValidationError") {
             res.status(400).json({message: "Enter valid details"});
         } else {
-            res.status(400).json(error.message);
+            console.error("Error creating the user:", error); // Logging the error
+            res.status(500).json({message: "An error occurred while creating user."});
         }
     }
 });
 
+// get all users information
 app.get("/users/all", async(req, res) => {
     try {
         const user = await User.find(); // returns an array of users
@@ -46,38 +54,71 @@ app.get("/users/all", async(req, res) => {
             res.status(200).json({message: "0 users found"});
         }
     } catch (error) {
-        res.status(500).send(error.message);
+        console.error("Error fetching users:", error); // Logging the error
+        res.status(500).json({message: "An error occurred while fetching users."});
     }
 });
 
+// get a unique user using the email address
 app.get("/users/:email", async (req, res) => {
     try {
-        const user = await User.findOne({email: req.params.email}); // finds the first document with the given attribute(s) match
+        // find the first user with the given email
+        const user = await User.findOne({email: req.params.email}); 
         if(user) {
-            res.status(200).json({message: "Match Found", ...user._doc});
+            res.status(200).json(...user._doc);
         } else {
             res.status(404).json({message: "User Not Found"});
         }
     } catch (error) {
-        res.status(500).send(error.message);
+        console.error("Error fetching the user:", error); // Logging the error
+        res.status(500).json({message: "An error occurred while fetching user."});
     }
 });
 
+// update a user using the email address
 app.put("/users/:email", async (req, res) => {
     try {
-        const user = await User.findOneAndUpdate({email: req.params.email}, req.body, {new: true}); // finds the first document with the given attribute(s) match and updates
-        res.status(200).json({message: "User Updated", ...user._doc});
+        // find the first document with the given email
+        const user = await User.findOneAndUpdate(
+            {email: req.params.email}, 
+            req.body, 
+            {new: true, runValidators: true});
+            // If the user was not found
+            if(!user) {
+                res.status(404).json({message: "No such user exists"});
+            }
+            // If the user was found and updated successfully 
+            res.status(200).json({message: "User Updated", ...user._doc});
     } catch(error) {
-        res.status(404).json({message: "No such user exists"});
+        if (error instanceof mongoose.Error.ValidationError) {
+            res.status(400).json({ message: error.message });
+        }
+        // Error occur when tried to update the email
+        else if (error.message === 'Email cannot be updated') {
+            res.status(400).json({ message: error.message });
+        }
+        // Handle other errors
+        else {
+            console.error("Error updating the user:", error); // Logging the error
+            res.status(500).json({ message: 'An unexpected error occurred', error: error.message });
+        }
     }
 });
 
+// delete a user using the email address
 app.delete("/users/:email", async (req, res) => {
     try {
-        const user = await User.findOneAndDelete({email: req.params.email});    // finds the first document with the given attributes(s) match and deletes the matching document
-        res.status(200).json({message: "User Deleted"});
+        // find the first user with the given email and delete the user
+        const user = await User.findOneAndDelete({email: req.params.email});
+        // Check if the user was found and deleted
+        if (!user) {
+            return res.status(404).json({ message: "No such user exists" });
+        }    
+        res.status(204).json({message: `User ${email} deleted successfully`});
     } catch(error) {
-        res.status(404).json({message: "No such user exists"});
+        console.error("Error deleting the user:", error); // Log the error
+        return res.status(500).json({message: "An error occurred while deleting the user."});
+
     }
 });
 
