@@ -6,7 +6,6 @@ const UserSchema = new mongoose.Schema({
         type: String, 
         required: true, 
         unique: true, 
-        immutable: true, 
         lowercase: true, 
         index: true, 
         validate: isEmail},
@@ -14,13 +13,13 @@ const UserSchema = new mongoose.Schema({
     age: {type: Number, required: true},
 }, {timestamps: true});
 
-UserSchema.pre('findOneAndUpdate', function(next) {
-    const update = this.getUpdate();
-    if(update.email) {
-        return next(new Error("Email cannot be updated"));
-    }
-    next();
-});
+// UserSchema.pre('findOneAndUpdate', function(next) {
+//     const update = this.getUpdate();
+//     if(update.email) {
+//         return next(new Error("Email cannot be updated"));
+//     }
+//     next();
+// });
 
 const User = mongoose.model("User", UserSchema);
 

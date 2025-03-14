@@ -7,10 +7,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 require('dotenv').config();
 
-// const PORT = process.env.PORT;
-// const DB_USER = process.env.DB_USER;
-// const DB_PW = process.env.DB_PW;
-// const DB_NAME = process.env.DB_NAME;
+const PORT = process.env.PORT;
+const DB_USER = process.env.DB_USER;
+const DB_PW = process.env.DB_PW;
+const DB_NAME = process.env.DB_NAME;
 
 const mongoURI = `mongodb+srv://${DB_USER}:${DB_PW}@cluster0.0gxs4.mongodb.net/${DB_NAME}?retryWrites=true&w=majority`;
 
@@ -47,23 +47,61 @@ app.post("/users/new", async(req, res) => {
 // get all users information
 app.get("/users/all", async(req, res) => {
     try {
-        const user = await User.find(); // returns an array of users
-        if(user.length > 0) {
-            res.status(200).json({message: `${user.length} users found`, users: user});
+        // Get page, limit, name, sortBy, and order from query parameters
+        const page = parseInt(req.query.page) || 1; // Default to page 1
+        const limit = parseInt(req.query.limit) || 10; // Default to 10 users per page
+        const name = req.query.name ? req.query.name.trim() : ""; // Get the name filter
+        const age = req.query.age ? parseInt(req.query.age) : null; // Get the age filter
+        const sortBy = req.query.sortBy || "name"; // Default to sorting by name
+        const order = req.query.order === "desc" ? -1 : 1; // Default to ascending order
+
+        // Calculate the number of users to skip
+        const skip = (page - 1) * limit;
+
+        // Build the query object for the search filter
+        const query = {};
+        if (name) {
+            query.name = { $regex: name, $options: 'i' }; // Case-insensitive search
+        }
+        if (age !== null) {
+            query.age = age; // Add age filter
+        }
+
+        // Fetch users with pagination, filtering and sorting
+        const users = await User.find(query).skip(skip).limit(limit).sort({[sortBy]: order});
+
+        // const users = await User.aggregate([
+        //     { $match: query }, 
+        //     { $sort: { [sortBy]: order === 1 ? 1 : -1 } }, 
+        //     { $skip: skip }, 
+        //     { $limit: limit } 
+        // ]);
+
+        // Get total number of users matching the query
+        const totalUsers = await User.countDocuments(query); 
+
+        if (users.length > 0) {
+            res.status(200).json({
+                message: `${users.length} users found`,
+                users: users,
+                totalUsers: totalUsers,
+                currentPage: page,
+                totalPages: Math.ceil(totalUsers / limit) // Calculate total pages
+            });
         } else {
-            res.status(200).json({message: "0 users found"});
+            res.status(200).json({ message: "0 users found" });
         }
     } catch (error) {
         console.error("Error fetching users:", error); // Logging the error
-        res.status(500).json({message: "An error occurred while fetching users."});
+        res.status(500).json({ message: "An error occurred while fetching users." });
     }
 });
 
 // get a unique user using the email address
-app.get("/users/:email", async (req, res) => {
+app.get("/users/:userId", async (req, res) => {
     try {
         // find the first user with the given email
-        const user = await User.findOne({email: req.params.email}); 
+        const user = await User.findOne({_id: req.params.userId}); 
         if(user) {
             res.status(200).json(...user._doc);
         } else {
@@ -76,11 +114,19 @@ app.get("/users/:email", async (req, res) => {
 });
 
 // update a user using the email address
-app.put("/users/:email", async (req, res) => {
+app.put("/users/:userId", async (req, res) => {
     try {
+        const {email, name, age} = req.body;
+        // Check if the email already exists (excluding the current user)
+        if (email) {
+            const existingUser  = await User.findOne({ email, _id: { $ne: req.params.userId } });
+            if (existingUser ) {
+                return res.status(400).json({ message: "Email already exists" });
+            }
+        }
         // find the first document with the given email
         const user = await User.findOneAndUpdate(
-            {email: req.params.email}, 
+            {_id: req.params.userId}, 
             req.body, 
             {new: true, runValidators: true});
             // If the user was not found
@@ -93,10 +139,6 @@ app.put("/users/:email", async (req, res) => {
         if (error instanceof mongoose.Error.ValidationError) {
             res.status(400).json({ message: error.message });
         }
-        // Error occur when tried to update the email
-        else if (error.message === 'Email cannot be updated') {
-            res.status(400).json({ message: error.message });
-        }
         // Handle other errors
         else {
             console.error("Error updating the user:", error); // Logging the error
@@ -106,15 +148,15 @@ app.put("/users/:email", async (req, res) => {
 });
 
 // delete a user using the email address
-app.delete("/users/:email", async (req, res) => {
+app.delete("/users/:userId", async (req, res) => {
     try {
         // find the first user with the given email and delete the user
-        const user = await User.findOneAndDelete({email: req.params.email});
+        const user = await User.findOneAndDelete({_id: req.params.userId});
         // Check if the user was found and deleted
         if (!user) {
             return res.status(404).json({ message: "No such user exists" });
         }    
-        res.status(204).json({message: `User ${email} deleted successfully`});
+        res.status(204).json({message: "User deleted successfully"});
     } catch(error) {
         console.error("Error deleting the user:", error); // Log the error
         return res.status(500).json({message: "An error occurred while deleting the user."});
